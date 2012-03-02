@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    int pass = 1;
+    int difCount = 0;
 
     ///////////
     // Initialize memory.
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
             pass++;
     }
 
-    if (pass < (width * height * 0.01)) //Fewer than 1% difference.
+    if (difCount < (width * height * 0.01)) //Fewer than 1% difference.
         printf("GPU Passes!\n");
     else
         printf("GPU FAILS =(\n");
