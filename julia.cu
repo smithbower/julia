@@ -247,7 +247,7 @@ void cpu_julia(int *matrix)
 
             complex_sub(oldRe, oldIm, inner_r, inner_i, &newRe, &newIm); //z - ((z^3 - 1) / 3z^2)
 
-            //Early break out - if we've mostly converged, break out.
+            //If we've mostly converged, break out early.
             if (abs(newRe - oldRe) < EPSILON && abs(newIm - oldIm) < EPSILON)
                 break;
         }
@@ -264,7 +264,7 @@ void cpu_julia(int *matrix)
                 if (newRe - 0.5 < EPSILON && newIm - 0.86603 < EPSILON)
                     matrix[x * height + y] = 3;
                 else
-                    matrix[threadID] = 0;
+                    matrix[x * height + y] = 0;
     }
 }
 
@@ -315,7 +315,7 @@ __global__ void gpu_julia(int *matrix, int width, int height, int maxIterations,
 
             complex_sub(oldRe, oldIm, inner_r, inner_i, &newRe, &newIm); //z - ((z^3 - 1) / 3z^2)
 
-            //Early break out - if we've mostly converged, break out.
+            //If we've mostly converged, break out early.
             if (abs(newRe - oldRe) < EPSILON && abs(newIm - oldIm) < EPSILON)
                 break;
         }
