@@ -4,7 +4,7 @@
 // julia.cu (c) Stephen Smithbower 2012
 //
 // CPU and Cuda implementations of the Julia set associated with the Newton 
-// iteration for the complex function f(z) = z3 .
+// iteration for the complex function f(z) = z^3 - 1.
 //
 // Note that the code was not designed to be optimal - just to work.
 // For the GPU test to pass, compile with -arch=sm_20 to enable double
@@ -19,6 +19,12 @@
 // -i    Maximum number of Newton's method iterations, default 200.
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+//*************
+// This code is presented as-is, without warrenty or support. You are welcome
+// to use this code in whatever way you wish, however I would appreciate
+// some credit =)
+//*************
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
