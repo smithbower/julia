@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    int difCount = 0;
+    int dif_count = 0;
 
     ///////////
     // Initialize memory.
@@ -186,10 +186,10 @@ int main(int argc, char *argv[])
         int index = (x * height) + y;
 
         if (cpu_image[index] != gpu_image[index])
-            pass++;
+            dif_count++;
     }
 
-    if (difCount < (width * height * 0.01)) //Fewer than 1% difference.
+    if (dif_count < (width * height * 0.01)) //Fewer than 1% difference.
         printf("GPU Passes!\n");
     else
         printf("GPU FAILS =(\n");
@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
 void cpu_julia(int *matrix)
 {
     double newRe, newIm, oldRe, oldIm;
+    double z_3_r, z_3_i, z_2_r, z_2_i, inner_r, inner_i;
 
     double ratio = (double)height / (double)width;
 
@@ -232,11 +233,8 @@ void cpu_julia(int *matrix)
             oldRe = newRe;
             oldIm = newIm;
 
-            double z_3_r = 0;
-            double z_3_i = 0;
-
-            double z_2_r = 0;
-            double z_2_i = 0;
+            //Clear everything.
+            z_3_r = z_3_i = z_2_r = z_2_i = inner_r = inner_i = 0;
 
             complex_mul(oldRe, oldIm, oldRe, oldIm, &z_2_r, &z_2_i); // z^2
             complex_mul(z_2_r, z_2_i, oldRe, oldIm, &z_3_r, &z_3_i); // z^3
@@ -244,9 +242,6 @@ void cpu_julia(int *matrix)
 
             z_2_r *= 3; // 3z^2
             z_2_i *= 3;
-
-            double inner_r = 0;
-            double inner_i = 0;
 
             complex_div(z_3_r, z_3_i, z_2_r, z_2_i, &inner_r, &inner_i); // ((z^3 - 1) / 3z^2)
 
@@ -268,6 +263,8 @@ void cpu_julia(int *matrix)
             else
                 if (newRe - 0.5 < EPSILON && newIm - 0.86603 < EPSILON)
                     matrix[x * height + y] = 3;
+                else
+                    matrix[threadID] = 0;
     }
 }
 
@@ -301,14 +298,8 @@ __global__ void gpu_julia(int *matrix, int width, int height, int maxIterations,
         ///////////
         for(int i = 0; i < maxIterations; i++)
         {
-            z_3_r = 0;
-            z_3_i = 0;
-
-            z_2_r = 0;
-            z_2_i = 0;
-
-            inner_r = 0;
-            inner_i = 0;
+            //Clear everything.
+            z_3_r = z_3_i = z_2_r = z_2_i = inner_r = inner_i = 0;
 
             oldRe = newRe;
             oldIm = newIm;
@@ -340,5 +331,7 @@ __global__ void gpu_julia(int *matrix, int width, int height, int maxIterations,
             else
                 if (newRe - 0.5 < EPSILON && newIm - 0.86603 < EPSILON)
                     matrix[threadID] = 3;
+                else
+                    matrix[threadID] = 0;
     }
 }
