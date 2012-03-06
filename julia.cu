@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
     ///////////
     // Perform GPU calculations, 128 threads per block (arbitrary).
     ///////////
-    gpu_julia<<<ceil(width * height) / 128, 128>>>(device_image, width, height, max_iterations, zoom, epsilon);
+    gpu_julia<<<ceil(width * height / 128), 128>>>(device_image, width, height, max_iterations, zoom, epsilon);
     cudaThreadSynchronize();
 
     cudaMemcpy(gpu_image, device_image, sizeof(int) * width * height, cudaMemcpyDeviceToHost);
