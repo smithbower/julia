@@ -6,10 +6,6 @@
 // CPU and Cuda implementations of the Julia set associated with the Newton 
 // iteration for the complex function f(z) = z^3 - 1.
 //
-// Note that the code was not designed to be optimal - just to work.
-// For the GPU test to pass, compile with -arch=sm_20 to enable double
-// precision.
-//
 // Utilizes [libbmp - BMP library] for image saving. The main source for this
 // can be found @ http://code.google.com/p/libbmp/
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,40 +41,40 @@ int height = 768;           //Height of the image, in pixels.
 int max_iterations = 200;    //Maximum number iterations of Newton's method.
                             //200 seems to work out pretty well.
 
-double zoom = 2.2;          //Viewing region (-x : x).
+float zoom = 2.2f;          //Viewing region (-x : x).
 
-double epsilon = 0.00001;     //Maximum difference when comparing doubles.
+float epsilon = 0.01f;     //Maximum difference when comparing floats.
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function Prototypes
 ////////////////////////////////////////////////////////////////////////////////
 void cpu_julia(int *matrix);
-__global__ void gpu_julia(int *matrix, int width, int height, int max_iterations, double zoom, double epsilon); 
+__global__ void gpu_julia(int *matrix, int width, int height, int max_iterations, float zoom, float epsilon); 
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Complex Number Helper Functions
 ////////////////////////////////////////////////////////////////////////////////
-__device__ __host__ void complex_add(double a, double b, double c, double d, double *realOut, double *imgOut)
+__device__ __host__ void complex_add(float a, float b, float c, float d, float *realOut, float *imgOut)
 {
     *realOut = a + c;
     *imgOut = b + d;
 }
 
-__device__ __host__ void complex_sub(double a, double b, double c, double d, double *realOut, double *imgOut)
+__device__ __host__ void complex_sub(float a, float b, float c, float d, float *realOut, float *imgOut)
 {
     *realOut = a - c;
     *imgOut = b - d;
 }
 
-__device__ __host__ void complex_mul(double a, double b, double c, double d, double *realOut, double *imgOut)
+__device__ __host__ void complex_mul(float a, float b, float c, float d, float *realOut, float *imgOut)
 {
     *realOut = (a * c) - (b * d);
     *imgOut = (b * c) + (a * d);
 }
 
-__device__ __host__ void complex_div(double a, double b, double c, double d, double *realOut, double *imgOut)
+__device__ __host__ void complex_div(float a, float b, float c, float d, float *realOut, float *imgOut)
 {
     *realOut = ((a * c) + (b * d)) / (pow(c, 2) + pow(d, 2));
     *imgOut = ((b * c) - (a * d))/ (pow(c, 2) + pow(d, 2));
@@ -169,7 +165,7 @@ int main(int argc, char *argv[])
     ///////////
     // Perform GPU calculations, 128 threads per block (arbitrary).
     ///////////
-    gpu_julia<<<ceil((double)width * (double)height / 128.0), 128>>>(device_image, width, height, max_iterations, zoom, epsilon);
+    gpu_julia<<<ceil((float)width * (float)height / 128.0f), 128>>>(device_image, width, height, max_iterations, zoom, epsilon);
     cudaThreadSynchronize();
 
     cudaMemcpy(gpu_image, device_image, sizeof(int) * width * height, cudaMemcpyDeviceToHost);
@@ -187,7 +183,7 @@ int main(int argc, char *argv[])
             dif_count++;
     }
 
-    if (dif_count < (width * height * 0.01)) //Fewer than 1% difference.
+    if (dif_count < (width * height * 0.01f)) //Fewer than 1% difference.
         printf("GPU Passes!\n");
     else
         printf("GPU FAILS =(\n");
@@ -209,10 +205,10 @@ int main(int argc, char *argv[])
 ////////////////////////////////////////////////////////////////////////////////
 void cpu_julia(int *matrix)
 {
-    double newRe, newIm, oldRe, oldIm;
-    double z_3_r, z_3_i, z_2_r, z_2_i, inner_r, inner_i;
+    float newRe, newIm, oldRe, oldIm;
+    float z_3_r, z_3_i, z_2_r, z_2_i, inner_r, inner_i;
 
-    double ratio = (double)height / (double)width;
+    float ratio = (float)height / (float)width;
 
     for(int x = 0; x < width; x++)
     for(int y = 0; y < height; y++)
@@ -220,8 +216,8 @@ void cpu_julia(int *matrix)
         ///////////
         // Set up starting value based on x, y (x = real, y = imaginary).
         ///////////
-        newRe = (((double)x / (double)width) - 0.5) * 2 * zoom;
-        newIm = ratio * (((double)y / (double)height) - 0.5) * 2 * zoom;
+        newRe = (((float)x / (float)width) - 0.5f) * 2.0f * zoom;
+        newIm = ratio * (((float)y / (float)height) - 0.5f) * 2.0f * zoom;
 
         ///////////
         // Newton's Method. z[+ 1] = z - ((z^3 - 1) / 3z^2)
@@ -236,10 +232,10 @@ void cpu_julia(int *matrix)
 
             complex_mul(oldRe, oldIm, oldRe, oldIm, &z_2_r, &z_2_i); // z^2
             complex_mul(z_2_r, z_2_i, oldRe, oldIm, &z_3_r, &z_3_i); // z^3
-            z_3_r -= 1; //z^3 - 1
+            z_3_r -= 1.0f; //z^3 - 1
 
-            z_2_r *= 3; // 3z^2
-            z_2_i *= 3;
+            z_2_r *= 3.0f; // 3z^2
+            z_2_i *= 3.0f;
 
             complex_div(z_3_r, z_3_i, z_2_r, z_2_i, &inner_r, &inner_i); // ((z^3 - 1) / 3z^2)
 
@@ -253,13 +249,13 @@ void cpu_julia(int *matrix)
         ///////////
         // Figure out which root we've converged to.
         ///////////
-        if (abs(1 - newRe) < epsilon && abs(0 - newIm) < epsilon)
+        if (abs(1.0f - newRe) < epsilon && abs(0 - newIm) < epsilon)
             matrix[x * height + y] = 1;
         else
-            if (newRe - 0.5 < epsilon && 0.86603 -  newIm < epsilon)
+            if (newRe - 0.5f < epsilon && 0.86603f -  newIm < epsilon)
                 matrix[x * height + y] = 2;
             else
-                if (newRe - 0.5 < epsilon && newIm - 0.86603 < epsilon)
+                if (newRe - 0.5f < epsilon && newIm - 0.86603f < epsilon)
                     matrix[x * height + y] = 3;
                 else
                     matrix[x * height + y] = 0;
@@ -270,14 +266,14 @@ void cpu_julia(int *matrix)
 ////////////////////////////////////////////////////////////////////////////////
 // GPU Implementation
 ////////////////////////////////////////////////////////////////////////////////
-__global__ void gpu_julia(int *matrix, int width, int height, int max_iterations, double zoom, double epsilon)
+__global__ void gpu_julia(int *matrix, int width, int height, int max_iterations, float zoom, float epsilon)
 {
     //Compute global thread id to index global memory.
     //Each thread is one pixel.
     int threadID = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-    double newRe, newIm, oldRe, oldIm;
-    double z_3_r, z_3_i, z_2_r, z_2_i, inner_r, inner_i;
+    float newRe, newIm, oldRe, oldIm;
+    float z_3_r, z_3_i, z_2_r, z_2_i, inner_r, inner_i;
 
     //Guard to make sure we're not writing to memory we don't own.
     if (threadID < width * height)
@@ -288,8 +284,8 @@ __global__ void gpu_julia(int *matrix, int width, int height, int max_iterations
         int x = (threadID / height);
         int y = (threadID % height);
 
-        newRe = (((double)x / (double)width) - 0.5) * 2 * zoom;
-        newIm = ((double)height / (double)width) * (((double)y / (double)height) - 0.5) * 2 * zoom;
+        newRe = (((float)x / (float)width) - 0.5f) * 2.0f * zoom;
+        newIm = ((float)height / (float)width) * (((float)y / (float)height) - 0.5f) * 2.0f * zoom;
 
         ///////////
         // Newton's Method. z[+ 1] = z - ((z^3 - 1) / 3z^2)
@@ -304,10 +300,10 @@ __global__ void gpu_julia(int *matrix, int width, int height, int max_iterations
 
             complex_mul(oldRe, oldIm, oldRe, oldIm, &z_2_r, &z_2_i); // z^2
             complex_mul(z_2_r, z_2_i, oldRe, oldIm, &z_3_r, &z_3_i); // z^3
-            z_3_r -= 1; //z^3 - 1
+            z_3_r -= 1.0f; //z^3 - 1
 
-            z_2_r *= 3; // 3z^2
-            z_2_i *= 3;
+            z_2_r *= 3.0f; // 3z^2
+            z_2_i *= 3.0f;
 
             complex_div(z_3_r, z_3_i, z_2_r, z_2_i, &inner_r, &inner_i); // ((z^3 - 1) / 3z^2)
 
@@ -321,13 +317,13 @@ __global__ void gpu_julia(int *matrix, int width, int height, int max_iterations
         ///////////
         // Figure out which root we've converged to.
         ///////////
-        if (abs(1 - newRe) < epsilon && abs(0 - newIm) < epsilon)
+        if (abs(1.0f - newRe) < epsilon && abs(0 - newIm) < epsilon)
             matrix[threadID] = 1;
         else
-            if (newRe - 0.5 < epsilon && 0.86603 -  newIm < epsilon)
+            if (newRe - 0.5f < epsilon && 0.86603f -  newIm < epsilon)
                 matrix[threadID] = 2;
             else
-                if (newRe - 0.5 < epsilon && newIm - 0.86603 < epsilon)
+                if (newRe - 0.5f < epsilon && newIm - 0.86603f < epsilon)
                     matrix[threadID] = 3;
                 else
                     matrix[threadID] = 0;
